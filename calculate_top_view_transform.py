@@ -13,14 +13,14 @@ uimg = undistort.undistort(img)
 src = np.float32(
         [[600, 448], #top left
          [680, 448], #top right
-         [1040, 673], #bottom right
-         [275, 673]]) #bottom left
+         [1100, 720], #bottom right
+         [200, 720]]) #bottom left
 
 dst = np.float32(
-        [[275, 0],
-         [1040, 0],
-         [1040, 720],
-         [275, 720]])
+        [[200, 0],
+         [1100, 0],
+         [1100, 720],
+         [200, 720]])
 
 M = cv2.getPerspectiveTransform(src, dst)
 Minv = cv2.getPerspectiveTransform(dst, src)

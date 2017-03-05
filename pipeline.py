@@ -1,17 +1,19 @@
 from moviepy.editor import VideoFileClip
-import undistort, topview, threshold
+import undistort, topview, threshold, sliding_window
 import matplotlib.pyplot as plt
 import cv2 
 import numpy as np
 
 prefix='../CarND-Advanced-Lane-Lines/'
 
-def process_image(img):
-    img = undistort.undistort(img)
-    img = threshold.threshold(img)
-    img = np.dstack((np.zeros_like(img), np.zeros_like(img), 255*img))
-    img = topview.warp(img)
-    return img
+def process_image(oimg):
+    uimg = undistort.undistort(oimg)
+    timg = threshold.threshold(uimg)
+    wimg = topview.warp(timg)
+    left_lane_inds, right_lane_inds, left_fit, right_fit = sliding_window.sliding_window(wimg)
+    left_curverad, right_curverad = sliding_window.roc(wimg.shape[0] - 1, left_fit, right_fit)
+    result = sliding_window.draw(uimg, wimg, left_fit, right_fit)
+    return result
 
 output1 = 'project_video.mp4'
 clip1 = VideoFileClip(prefix + output1)
