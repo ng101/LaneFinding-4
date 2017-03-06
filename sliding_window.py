@@ -115,8 +115,6 @@ if __name__ == '__main__':
     left_fit = np.polyfit(lefty, leftx, 2)
     right_fit = np.polyfit(righty, rightx, 2)
 
-
-
     left_curverad, right_curverad = roc(binary_warped.shape[0] - 1, left_fit, right_fit)
     print(left_curverad, 'm', right_curverad, 'm')
 

@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def abs_grad_threshold(img, orient='x', thresh_min=0, thresh_max=255, kernel=3):
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) # img is read via mpimg
+    #gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) # img is read via mpimg
+    gray = img
     if 'x' == orient:
         grad = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=kernel)
     else:
@@ -18,7 +19,8 @@ def abs_grad_threshold(img, orient='x', thresh_min=0, thresh_max=255, kernel=3):
     return binary_output
 
 def mag_grad_threshold(img, thresh_min=0, thresh_max=255, kernel=3):
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) # img is read via mpimg
+    #gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) # img is read via mpimg
+    gray = img
     sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0)
     sobel_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1)
     grad = np.sqrt(np.square(sobel_x) + np.square(sobel_y))
@@ -28,11 +30,12 @@ def mag_grad_threshold(img, thresh_min=0, thresh_max=255, kernel=3):
     return binary_output
 
 def dir_grad_threshold(img, thresh_min=0, thresh_max=np.pi/2, kernel=3):
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) # img is read via mpimg
+    #gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) # img is read via mpimg
+    gray = img
     sobel_x = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=kernel))
     sobel_y = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=kernel))
     dire = np.arctan2(sobel_y, sobel_x)
-    binary_output = np.zeros_like(dire)
+    binary_output = np.zeros_like(dire).astype(np.int32)
     binary_output[(dire > thresh_min) & (dire < thresh_max)] = 1
     return binary_output
 
@@ -43,27 +46,63 @@ def s_threshold(img, thresh_min=0, thresh_max=255):
     binary_output[(S > thresh_min) & (S <= thresh_max)] = 1
     return binary_output
 
-def threshold(img):
-    abs_binary = abs_grad_threshold(img, 'x', 20, 100)
-    m_binary = mag_grad_threshold(img, 30, 100)
-    s_binary = s_threshold(img, 170, 255)
-    d_binary = dir_grad_threshold(img, 0.7, 1.3, 15)
+def r_threshold(img, thresh_min=0, thresh_max=255):
+    R = img[:,:,0]
+    binary_output = np.zeros_like(R)
+    binary_output[(R > thresh_min) & (R <= thresh_max)] = 1
+    return binary_output
+
+def grad_threshold(img):
+    abs_binary = abs_grad_threshold(img, 'x', 60, 80) # abs gradient
+    m_binary = mag_grad_threshold(img, 60, 100)  # mag gradient
+    d_binary = dir_grad_threshold(img, 0.7, 1.3, 15) # Dir gradient
     combined_binary = np.zeros_like(abs_binary)
-    combined_binary[(((abs_binary == 1) & (m_binary == 1)) | (s_binary == 1)) & (d_binary == 1)] = 1
+    #combined_binary = d_binary
+    combined_binary[((abs_binary == 1) & (m_binary == 1)) & (d_binary == 1)] = 1
     return combined_binary
+
+def threshold(oimg):
+    r_binary = r_threshold(oimg, 100, 255) # R channel
+    s_binary = s_threshold(oimg, 100, 255) # S channel
+    img = 255*(r_binary | s_binary)
+    abs_binary = abs_grad_threshold(img, 'x', 20, 150) # abs gradient
+    m_binary = mag_grad_threshold(img, 30, 150)  # mag gradient
+    d_binary = dir_grad_threshold(img, 0.7, 1.3, 15) # Dir gradient
+    combined_binary = np.zeros_like(abs_binary)
+    #combined_binary[(((abs_binary == 1) & (m_binary == 1)) | (s_binary == 1)) & (d_binary == 1) & (r_binary == 1)] = 1
+    combined_binary[((abs_binary == 1) & (m_binary == 1)) & (d_binary == 1)] = 1
+    r_thresh = grad_threshold(20*r_binary) 
+    s_thresh = grad_threshold(20*s_binary)
+    combined = r_thresh | s_thresh
+    #return r_binary, s_binary, r_thresh, s_thresh, combined
+    return combined
 
 if __name__ == '__main__':
     images = glob.glob('../CarND-Advanced-Lane-Lines/test_images/test*.jpg')
     for i in images:
-        img = cv2.cvtColor(cv2.imread(i), cv2.COLOR_BGR2RGB)
-        f, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 9))
+        img = mpimg.imread(i)
+        f,((ax1, ax2),(ax3, ax4),(ax5, ax6)) = plt.subplots(3, 2, figsize=(24, 9))
         f.tight_layout()
         ax1.imshow(img)
         ax1.set_title('Original Image', fontsize=50)
         
-        timg = threshold(img)
+        r, s, rt, st, timg = threshold(img)
+
         ax2.imshow(timg, cmap='gray')
         ax2.set_title('Threshold Image', fontsize=50)
+
+        ax3.imshow(r, cmap='gray')
+        ax3.set_title('R Image', fontsize=50)
+
+        ax4.imshow(s, cmap='gray')
+        ax4.set_title('S Image', fontsize=50)
+
+        ax5.imshow(rt, cmap='gray')
+        ax5.set_title('Red Grad Image', fontsize=50)
+
+        ax6.imshow(st, cmap='gray')
+        ax6.set_title('S Grad Image', fontsize=50)
+
         plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
         f.savefig('output_images/threshold_' + i.split('/')[-1])
         plt.close(f)
