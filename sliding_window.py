@@ -4,7 +4,23 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-import undistort, threshold, topview
+import undistort, threshold, topview, draw
+
+def targeted_lane_search(binary_warped, left_fit, right_fit):
+    nonzero = binary_warped.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    margin = 100
+    left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] + margin))) 
+    right_lane_inds = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] - margin)) & (nonzerox < (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] + margin)))  
+
+    # Again, extract left and right line pixel positions
+    leftx = nonzerox[left_lane_inds]
+    lefty = nonzeroy[left_lane_inds] 
+    rightx = nonzerox[right_lane_inds]
+    righty = nonzeroy[right_lane_inds]
+
+    return leftx, lefty, rightx, righty
 
 def sliding_window(binary_warped, nwindows=9):
     histogram = np.sum(binary_warped[binary_warped.shape[0]/2:,:], axis=0)
@@ -61,13 +77,9 @@ def sliding_window(binary_warped, nwindows=9):
     leftx = nonzerox[left_lane_inds]
     lefty = nonzeroy[left_lane_inds] 
     rightx = nonzerox[right_lane_inds]
-    righty = nonzeroy[right_lane_inds] 
+    righty = nonzeroy[right_lane_inds]
 
-    # Fit a second order polynomial to each
-    left_fit = np.polyfit(lefty, leftx, 2)
-    right_fit = np.polyfit(righty, rightx, 2)
-
-    return left_lane_inds, right_lane_inds, left_fit, right_fit
+    return leftx, lefty, rightx, righty
 
 def roc(y_eval, left_fit, right_fit):
     # Define conversions in x and y from pixels space to meters
@@ -90,33 +102,6 @@ def dist_from_center(binary_warped, left_fit, right_fit):
     img_center = binary_warped.shape[1] / 2
     return (lane_center - img_center) * xm_per_pix
 
-def draw(img, binary_warped, left_fit, right_fit, roc, dist):
-    # Create an image to draw the lines on
-    warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
-    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
-
-    ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0])
-    left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
-    right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
-    # Recast the x and y points into usable format for cv2.fillPoly()
-    pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
-    pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
-    pts = np.hstack((pts_left, pts_right))
-
-    # Draw the lane onto the warped blank image
-    cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
-
-    # Warp the blank back to original image space using inverse perspective matrix (Minv)
-    newwarp = topview.unwarp(color_warp)
-    # Combine the result with the original image
-    new_img = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(new_img, 'Radius of curvature: {:.2f}m'.format(roc), (10,100), font, 1, (255,255,255), 2)
-    vehicle_placement = 'left of center' if dist > 0 else 'right of center'
-    text = ('Vehicle is {:.2f}m ' + vehicle_placement).format(np.absolute(dist))
-    cv2.putText(new_img, text, (10, 150), font, 1, (255,255,255), 2)
-    return new_img
-
 if __name__ == '__main__':
     # open an image
     oimg = mpimg.imread('../CarND-Advanced-Lane-Lines/test_images/test2.jpg')
@@ -124,7 +109,14 @@ if __name__ == '__main__':
     img = threshold.threshold(img)
     binary_warped = topview.warp(img)
 
-    left_lane_inds, right_lane_inds, left_fit, right_fit = sliding_window(binary_warped)
+    leftx, lefty, rightx, righty = sliding_window(binary_warped)
+
+    # Fit a second order polynomial to each
+    left_fit = np.polyfit(lefty, leftx, 2)
+    right_fit = np.polyfit(righty, rightx, 2)
+
+
+
     left_curverad, right_curverad = roc(binary_warped.shape[0] - 1, left_fit, right_fit)
     print(left_curverad, 'm', right_curverad, 'm')
 
@@ -139,13 +131,16 @@ if __name__ == '__main__':
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
 
-    out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-    out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+    out_img[lefty, leftx] = [255, 0, 0]
+    out_img[righty, rightx] = [0, 0, 255]
     plt.imshow(out_img)
     plt.plot(left_fitx, ploty, color='yellow')
     plt.plot(right_fitx, ploty, color='yellow')
     plt.xlim(0, 1280)
     plt.ylim(720, 0)
     plt.show()
-    plt.imshow(draw(oimg, binary_warped, left_fit, right_fit))
+    dfc = dist_from_center(binary_warped, left_fit, right_fit)
+    roc = (left_curverad + right_curverad) / 2
+
+    plt.imshow(draw.draw(oimg, binary_warped, left_fit, right_fit, roc, dfc))
     plt.show()
