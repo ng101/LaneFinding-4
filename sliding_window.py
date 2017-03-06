@@ -72,7 +72,6 @@ def sliding_window(binary_warped, nwindows=9):
 def roc(y_eval, left_fit, right_fit):
     # Define conversions in x and y from pixels space to meters
     ym_per_pix = 30/720 # meters per pixel in y dimension
-    xm_per_pix = 3.7/700 # meters per pixel in x dimension
 
     # Calculate the radii of curvature
     left_curverad = ((1 + (2 * left_fit[0] * y_eval * ym_per_pix + left_fit[1])**2)**1.5) / np.absolute(2 * left_fit[0])
@@ -80,7 +79,18 @@ def roc(y_eval, left_fit, right_fit):
     # Now our radius of curvature is in meters
     return left_curverad, right_curverad
 
-def draw(img, binary_warped, left_fit, right_fit):
+def dist_from_center(binary_warped, left_fit, right_fit):
+    # assuming lane center should be at center of image
+    xm_per_pix = 3.7/700 # meters per pixel in x dimension
+
+    y = binary_warped.shape[0] - 1
+    xl = left_fit[0]*y**2 + left_fit[1]*y + left_fit[2]
+    xr = right_fit[0]*y**2 + right_fit[1]*y + right_fit[2]
+    lane_center = (xl + xr) / 2
+    img_center = binary_warped.shape[1] / 2
+    return (lane_center - img_center) * xm_per_pix
+
+def draw(img, binary_warped, left_fit, right_fit, roc, dist):
     # Create an image to draw the lines on
     warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
     color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
@@ -99,7 +109,13 @@ def draw(img, binary_warped, left_fit, right_fit):
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = topview.unwarp(color_warp)
     # Combine the result with the original image
-    return cv2.addWeighted(img, 1, newwarp, 0.3, 0)
+    new_img = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(new_img, 'Radius of curvature: {:.2f}m'.format(roc), (10,100), font, 1, (255,255,255), 2)
+    vehicle_placement = 'left of center' if dist > 0 else 'right of center'
+    text = ('Vehicle is {:.2f}m ' + vehicle_placement).format(np.absolute(dist))
+    cv2.putText(new_img, text, (10, 150), font, 1, (255,255,255), 2)
+    return new_img
 
 if __name__ == '__main__':
     # open an image
