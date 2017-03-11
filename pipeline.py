@@ -13,11 +13,14 @@ def process_image(oimg):
     uimg = undistort.undistort(oimg)
     timg = threshold.threshold(uimg)
     wimg = topview.warp(timg)
+    #result = np.dstack((255*wimg, 255*wimg, 255*wimg))
+    #plt.imshow(result)
+    #plt.show()
     left_fit, right_fit, roc, dfc = lane_finder.find(wimg)
     result = draw.draw(uimg, wimg, left_fit, right_fit, roc, dfc)
     return result
 
-output1 = 'challenge_video.mp4'
+output1 = 'project_video.mp4'
 clip1 = VideoFileClip(prefix + output1)
 out_clip1 = clip1.fl_image(process_image)
 out_clip1.write_videofile(output1, audio=False)

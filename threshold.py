@@ -53,27 +53,22 @@ def r_threshold(img, thresh_min=0, thresh_max=255):
     return binary_output
 
 def grad_threshold(img):
-    abs_binary = abs_grad_threshold(img, 'x', 60, 80) # abs gradient
-    m_binary = mag_grad_threshold(img, 60, 100)  # mag gradient
+    abs_binary = abs_grad_threshold(img, 'x', 60, 120, 3) # abs gradient
+    m_binary = mag_grad_threshold(img, 70, 140, 3)  # mag gradient
     d_binary = dir_grad_threshold(img, 0.7, 1.3, 15) # Dir gradient
     combined_binary = np.zeros_like(abs_binary)
-    #combined_binary = d_binary
     combined_binary[((abs_binary == 1) & (m_binary == 1)) & (d_binary == 1)] = 1
     return combined_binary
 
 def threshold(oimg):
-    r_binary = r_threshold(oimg, 100, 255) # R channel
+    r_binary = r_threshold(oimg, 225, 255) # R channel
     s_binary = s_threshold(oimg, 100, 255) # S channel
-    img = 255*(r_binary | s_binary)
-    abs_binary = abs_grad_threshold(img, 'x', 20, 150) # abs gradient
-    m_binary = mag_grad_threshold(img, 30, 150)  # mag gradient
-    d_binary = dir_grad_threshold(img, 0.7, 1.3, 15) # Dir gradient
-    combined_binary = np.zeros_like(abs_binary)
-    #combined_binary[(((abs_binary == 1) & (m_binary == 1)) | (s_binary == 1)) & (d_binary == 1) & (r_binary == 1)] = 1
-    combined_binary[((abs_binary == 1) & (m_binary == 1)) & (d_binary == 1)] = 1
-    r_thresh = grad_threshold(20*r_binary) 
-    s_thresh = grad_threshold(20*s_binary)
-    combined = r_thresh | s_thresh
+    #abs_binary = abs_grad_threshold(img, 'x', 20, 150) # abs gradient
+    #m_binary = mag_grad_threshold(img, 30, 150)  # mag gradient
+    #d_binary = dir_grad_threshold(img, 0.7, 1.3, 15) # Dir gradient
+    combined_binary = np.zeros_like(r_binary)
+    combined_binary[(r_binary == 1) | (s_binary == 1)] = 20
+    combined = 255 * grad_threshold(combined_binary)
     #return r_binary, s_binary, r_thresh, s_thresh, combined
     return combined
 
@@ -98,7 +93,7 @@ if __name__ == '__main__':
         ax4.set_title('S Image', fontsize=50)
 
         ax5.imshow(rt, cmap='gray')
-        ax5.set_title('Red Grad Image', fontsize=50)
+        ax5.set_title('R Grad Image', fontsize=50)
 
         ax6.imshow(st, cmap='gray')
         ax6.set_title('S Grad Image', fontsize=50)
