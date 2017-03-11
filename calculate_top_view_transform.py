@@ -11,16 +11,16 @@ img = mpimg.imread('../CarND-Advanced-Lane-Lines/test_images/straight_lines1.jpg
 uimg = undistort.undistort(img)
 
 src = np.float32(
-        [[600, 448], #top left
-         [680, 448], #top right
+        [[534, 490], #top left
+         [750, 490], #top right
          [1100, 720], #bottom right
          [200, 720]]) #bottom left
 
 dst = np.float32(
-        [[200, 0],
-         [1100, 0],
-         [1100, 720],
-         [200, 720]])
+        [[250, 0],
+         [950, 0],
+         [950, 720],
+         [250, 720]])
 
 M = cv2.getPerspectiveTransform(src, dst)
 Minv = cv2.getPerspectiveTransform(dst, src)

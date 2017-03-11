@@ -3,8 +3,8 @@ import numpy as np
 import sliding_window
 
 class LaneFinder:
-    MAX_LANE_GAPS = 5 # after which to re-run sliding window
-    SMOOTHING_COUNT = 5 # smooth fit over these many last fits
+    MAX_LANE_GAPS = 50 # frames, after which to re-run sliding window
+    SMOOTHING_COUNT = 100 # smooth fit over these many last fits
 
     def __init__(self):
         self.last_lane_counter = -1000 # last time lane was detected
@@ -31,8 +31,6 @@ class LaneFinder:
         self.rightx.append(rx)
         self.left_fits.append(lfit)
         self.right_fits.append(rfit)
-        self.last_left_fit = lfit
-        self.last_right_fit = rfit
         self.lane_width_fits.append(rfit - lfit)
 
         # estimate new width
@@ -77,14 +75,14 @@ class LaneFinder:
     @staticmethod
     def sane_line(y, x, last_fit = None):
         if len(x) < 100:
-            #print('Failed pixel check')
+            print('Failed pixel check')
             return False, np.array([0, 0, 0])
 
         # Fit a second order polynomial to each
         fit = np.polyfit(y, x, 2)
         if last_fit is not None:
             if not LaneFinder.same_lines([0, 719], fit, last_fit):
-                #print('Diverging line')
+                print('Diverging line')
                 return False, np.array([0, 0, 0])
         return True, fit
 
@@ -101,8 +99,8 @@ class LaneFinder:
 
     def parallel_check(self, curr_lfit, curr_rfit):
         width = self.lane_width
-        min_width = max(500, 0.75 * width)
-        max_width = min(1200, 1.25 * width)
+        min_width = min(500, 0.8 * width)
+        max_width = max(900, 1.2 * width)
         return LaneFinder.parallel_lines([0, 719],
                 curr_lfit, curr_rfit, min_width, max_width)
 
@@ -121,7 +119,7 @@ class LaneFinder:
     def find(self, bwimg):
         # Set current counter
         self.counter += 1
-
+        print(self.counter, self.lane_width)
         # Check if we need to re-run sliding window
         reset = False
         if self.counter - self.last_lane_counter >= LaneFinder.MAX_LANE_GAPS:
@@ -130,7 +128,7 @@ class LaneFinder:
         last_l_fit = self.last_left_fit
         last_r_fit = self.last_right_fit
         if (reset is True) or (last_l_fit is None) or (last_r_fit is None):
-            self.reset() # reset history, start afresh
+            #self.reset() # reset history, start afresh
             lx, ly, rx, ry = sliding_window.sliding_window(bwimg)
         else:
             lx, ly, rx, ry = sliding_window.targeted_lane_search(
@@ -139,20 +137,22 @@ class LaneFinder:
         lval, lfit = LaneFinder.sane_line(ly, lx, last_l_fit)
         rval, rfit = LaneFinder.sane_line(ry, rx, last_r_fit)
         parallel = self.parallel_check(lfit, rfit)
-        
+        print(lval, rval, parallel) 
         if lval and rval and parallel:
-            #print('Sane Lane')
+            print('Sane Lane')
             self.last_lane_counter = self.counter
             self.save(ly, lx, ry, rx, lfit, rfit)
             lfit = self.smoothen('l')
             rfit = self.smoothen('r')
         elif lval is True and self.last_lane_width_fit is not None:
             #print('Left Line valid')
+            self.last_lane_counter = self.counter
             self.partial_save(ly, lx, lfit, 'l')
             lfit = self.smoothen('l')
             rfit = lfit + self.last_lane_width_fit
         elif rval is True and self.last_lane_width_fit is not None:
             #print('Right Lane valid')
+            self.last_lane_counter = self.counter
             self.partial_save(ry, rx, rfit, 'r')
             rfit = self.smoothen('r')
             lfit = rfit - self.last_lane_width_fit
@@ -163,7 +163,10 @@ class LaneFinder:
         #else:
             #print('No good fit found')
 
+        self.last_left_fit = lfit
+        self.last_right_fit = rfit
+
         left_roc, right_roc = sliding_window.roc(bwimg.shape[0] - 1, lfit, rfit)
         dfc = sliding_window.dist_from_center(bwimg, lfit, rfit)
         roc = (left_roc + right_roc) / 2
-        return lfit, rfit, roc, dfc
+        return lfit, rfit, roc, dfc, ly, lx, ry, rx
