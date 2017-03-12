@@ -69,8 +69,6 @@ def grad_threshold(img):
     return combined_binary
 
 def region_of_interest(img, vertices):
-    shape = img.shape
-    h, w = shape[0], shape[1]
     mask = np.zeros_like(img)   
     ignore_mask_color = 255    
     #filling pixels inside the polygon defined by "vertices" with the fill color    
@@ -85,6 +83,8 @@ def threshold(oimg):
     s_binary = s_threshold(oimg, 80, 255) # S channel
     l_binary = l_threshold(oimg, 200, 255) # S channel
     combined_binary = (r_binary | s_binary | l_binary)
+    shape = combined_binary.shape
+    h, w = shape[0], shape[1]
     vertices = np.array([[(150,h), (570, 450), (715, 450), (1150,h)]], dtype=np.int32)
     combined_binary = region_of_interest(combined_binary, vertices)
     timg = 255 * grad_threshold(combined_binary)
