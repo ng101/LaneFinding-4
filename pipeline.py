@@ -32,7 +32,7 @@ def process_image(oimg):
             ly, lx, ry, rx, False)
     return result
 
-output1 = 'project_video.mp4'
+output1 = 'challenge_video.mp4'
 clip1 = VideoFileClip(prefix + output1)
 out_clip1 = clip1.fl_image(process_image)
 out_clip1.write_videofile(output1, audio=False)

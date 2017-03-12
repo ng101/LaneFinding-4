@@ -75,14 +75,12 @@ class LaneFinder:
     @staticmethod
     def sane_line(y, x, last_fit = None):
         if len(x) < 100:
-            print('Failed pixel check')
             return False, np.array([0, 0, 0])
 
         # Fit a second order polynomial to each
         fit = np.polyfit(y, x, 2)
         if last_fit is not None:
             if not LaneFinder.same_lines([0, 719], fit, last_fit):
-                print('Diverging line')
                 return False, np.array([0, 0, 0])
         return True, fit
 
@@ -104,22 +102,9 @@ class LaneFinder:
         return LaneFinder.parallel_lines([0, 719],
                 curr_lfit, curr_rfit, min_width, max_width)
 
-    def find1(self, bwimg):
-        leftx, lefty, rightx, righty = sliding_window.sliding_window(bwimg)
-
-        # Fit a second order polynomial to each
-        left_fit = np.polyfit(lefty, leftx, 2)
-        right_fit = np.polyfit(righty, rightx, 2)
-
-        left_roc, right_roc = sliding_window.roc(bwimg.shape[0] - 1, left_fit, right_fit)
-        dfc = sliding_window.dist_from_center(bwimg, left_fit, right_fit)
-        roc = (left_roc + right_roc) / 2
-        return left_fit, right_fit, roc, dfc
-
     def find(self, bwimg):
         # Set current counter
         self.counter += 1
-        print(self.counter, self.lane_width)
         # Check if we need to re-run sliding window
         reset = False
         if self.counter - self.last_lane_counter >= LaneFinder.MAX_LANE_GAPS:
@@ -137,31 +122,24 @@ class LaneFinder:
         lval, lfit = LaneFinder.sane_line(ly, lx, last_l_fit)
         rval, rfit = LaneFinder.sane_line(ry, rx, last_r_fit)
         parallel = self.parallel_check(lfit, rfit)
-        print(lval, rval, parallel) 
         if lval and rval and parallel:
-            print('Sane Lane')
             self.last_lane_counter = self.counter
             self.save(ly, lx, ry, rx, lfit, rfit)
             lfit = self.smoothen('l')
             rfit = self.smoothen('r')
         elif lval is True and self.last_lane_width_fit is not None:
-            #print('Left Line valid')
             self.last_lane_counter = self.counter
             self.partial_save(ly, lx, lfit, 'l')
             lfit = self.smoothen('l')
             rfit = lfit + self.last_lane_width_fit
         elif rval is True and self.last_lane_width_fit is not None:
-            #print('Right Lane valid')
             self.last_lane_counter = self.counter
             self.partial_save(ry, rx, rfit, 'r')
             rfit = self.smoothen('r')
             lfit = rfit - self.last_lane_width_fit
         elif len(self.leftx) > 0 and len(self.rightx) > 0:
-            #print('Approximating from last')
             lfit = self.smoothen('l')
             rfit = self.smoothen('r')
-        #else:
-            #print('No good fit found')
 
         self.last_left_fit = lfit
         self.last_right_fit = rfit
