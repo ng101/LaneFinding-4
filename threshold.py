@@ -61,8 +61,8 @@ def r_threshold(img, thresh_min=0, thresh_max=255):
     return binary_output
 
 def grad_threshold(img):
-    abs_binary = abs_grad_threshold(img, 'x', 20, 100, 15) # abs x-gradient
-    d_binary = dir_grad_threshold(img, 0.7, 1.3, 15) # Dir gradient
+    abs_binary = abs_grad_threshold(img, 'x', 20, 100, 7) # abs x-gradient
+    d_binary = dir_grad_threshold(img, 0.7, 1.5, 7) # Dir gradient
     combined_binary = np.zeros_like(abs_binary)
     cond = ((d_binary == 1) & (abs_binary == 1))
     combined_binary[cond] = 1
@@ -79,16 +79,25 @@ def region_of_interest(img, vertices):
     return masked_image
 
 def threshold(oimg):
+    gray = cv2.cvtColor(oimg, cv2.COLOR_RGB2GRAY) # img is read via mpimg
+    abs_binary = abs_grad_threshold(gray, 'x', 40, 120, 5) # abs x-gradient
+    d_binary = dir_grad_threshold(gray, 1.0, 1.5, 7) # Dir gradient
+    gray_grad = np.zeros_like(abs_binary)
+    cond = ((d_binary == 1) & (abs_binary == 1))
+    gray_grad[cond] = 1
+
     r_binary = r_threshold(oimg, 225, 255) # R channel
     s_binary = s_threshold(oimg, 80, 255) # S channel
-    l_binary = l_threshold(oimg, 200, 255) # S channel
-    combined_binary = (r_binary | s_binary | l_binary)
-    shape = combined_binary.shape
+    l_binary = l_threshold(oimg, 200, 255) # L channel
+
+    color_thresh_binary = grad_threshold(r_binary | s_binary | l_binary)
+    shape = color_thresh_binary.shape
     h, w = shape[0], shape[1]
-    vertices = np.array([[(150,h), (570, 450), (715, 450), (1150,h)]], dtype=np.int32)
-    combined_binary = region_of_interest(combined_binary, vertices)
-    timg = 255 * grad_threshold(combined_binary)
-    return r_binary, s_binary, combined_binary, timg
+    vertices = np.array([[(150, h), (570, 440),
+                          (715, 440), (1150, h)]], dtype=np.int32)
+    timg = (color_thresh_binary | gray_grad)
+    roi = region_of_interest(timg, vertices)
+    return r_binary, color_thresh_binary, gray_grad, roi
 
 if __name__ == '__main__':
     images = glob.glob('../CarND-Advanced-Lane-Lines/test_images/test*.jpg')
@@ -99,16 +108,17 @@ if __name__ == '__main__':
         ax1.imshow(img)
         ax1.set_title('Original Image', fontsize=50)
         
-        r, s, c, timg = threshold(img)
+        r, c, g, timg = threshold(img)
 
         ax2.imshow(timg, cmap='gray')
         ax2.set_title('Threshold Image', fontsize=50)
 
         ax3.imshow(c, cmap='gray')
-        ax3.set_title('Com Image', fontsize=50)
+        ax3.set_title('Combined Binary Image', fontsize=50)
 
         ax4.imshow(topview.warp(timg), cmap='gray')
-        ax4.set_title('Warped Image', fontsize=50)
+        #ax4.imshow(g, cmap='gray')
+        ax4.set_title('Topview Image', fontsize=50)
 
         #ax5.imshow(rt, cmap='gray')
         #ax5.set_title('R Grad Image', fontsize=50)

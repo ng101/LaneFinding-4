@@ -11,8 +11,8 @@ img = mpimg.imread('../CarND-Advanced-Lane-Lines/test_images/straight_lines1.jpg
 uimg = undistort.undistort(img)
 
 src = np.float32(
-        [[534, 490], #top left
-         [750, 490], #top right
+        [[600, 450], #top left
+         [680, 450], #top right
          [1100, 720], #bottom right
          [200, 720]]) #bottom left
 

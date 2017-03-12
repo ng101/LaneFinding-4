@@ -3,8 +3,8 @@ import numpy as np
 import sliding_window
 
 class LaneFinder:
-    MAX_LANE_GAPS = 50 # frames, after which to re-run sliding window
-    SMOOTHING_COUNT = 100 # smooth fit over these many last fits
+    MAX_LANE_GAPS = 30 # frames, after which to re-run sliding window
+    SMOOTHING_COUNT = 30 # smooth fit over these many last fits
 
     def __init__(self):
         self.last_lane_counter = -1000 # last time lane was detected
