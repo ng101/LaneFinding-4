@@ -4,17 +4,18 @@ from find_lane import LaneFinder
 import matplotlib.pyplot as plt
 import cv2 
 import numpy as np
+import sys
 
 lane_finder = LaneFinder()
 
 prefix='../CarND-Advanced-Lane-Lines/'
 
-def debug_image(omig):
+def debug_image(oimg):
     uimg = undistort.undistort(oimg)
     _, _, _, timg = threshold.threshold(uimg)
     wimg = topview.warp(timg)
     #result = np.dstack((timg, timg, timg))
-    #result = np.dstack((wimg, wimg, wimg))
+    result = np.dstack((wimg, wimg, wimg))
     left_fit, right_fit, roc, dfc, ly, lx, ry, rx = lane_finder.find(wimg)
 
     #ploty = np.linspace(0, wimg.shape[0]-1, wimg.shape[0]).astype(int)
@@ -36,7 +37,18 @@ def process_image(oimg):
             ly, lx, ry, rx, False)
     return result
 
-output1 = 'challenge_video.mp4'
-clip1 = VideoFileClip(prefix + output1)
-out_clip1 = clip1.fl_image(process_image)
-out_clip1.write_videofile(output1, audio=False)
+if __name__ == '__main__':
+    output = 'project_video.mp4'
+    if len(sys.argv) >= 2:
+        output = sys.argv[1]
+
+    mode = 'prod'
+    if len(sys.argv) >= 3:
+        mode = sys.argv[2]
+
+    clip = VideoFileClip(prefix + output)
+    if mode == 'debug':
+        out_clip = clip.fl_image(debug_image)
+    else:
+        out_clip = clip.fl_image(process_image)
+    out_clip.write_videofile(output, audio=False)
