@@ -62,20 +62,15 @@ def r_threshold(img, thresh_min=0, thresh_max=255):
 
 def grad_threshold(img):
     abs_binary = abs_grad_threshold(img, 'x', 20, 100, 15) # abs x-gradient
-    m_binary = mag_grad_threshold(img, 70, 200, 21)  # mag gradient
     d_binary = dir_grad_threshold(img, 0.7, 1.3, 15) # Dir gradient
     combined_binary = np.zeros_like(abs_binary)
-    #cond = (abs_binary == 1)
     cond = ((d_binary == 1) & (abs_binary == 1))
-    #cond = ((abs_binary == 1) & (m_binary == 1) & (d_binary == 1))
     combined_binary[cond] = 1
     return combined_binary
 
-def region_of_interest(img):
+def region_of_interest(img, vertices):
     shape = img.shape
     h, w = shape[0], shape[1]
-
-    vertices = np.array([[(150,h), (570, 450), (715, 450), (1150,h)]], dtype=np.int32)
     mask = np.zeros_like(img)   
     ignore_mask_color = 255    
     #filling pixels inside the polygon defined by "vertices" with the fill color    
@@ -89,11 +84,9 @@ def threshold(oimg):
     r_binary = r_threshold(oimg, 225, 255) # R channel
     s_binary = s_threshold(oimg, 80, 255) # S channel
     l_binary = l_threshold(oimg, 200, 255) # S channel
-    #abs_binary = abs_grad_threshold(img, 'x', 20, 150) # abs gradient
-    #m_binary = mag_grad_threshold(img, 30, 150)  # mag gradient
-    #d_binary = dir_grad_threshold(img, 0.7, 1.3, 15) # Dir gradient
     combined_binary = (r_binary | s_binary | l_binary)
-    combined_binary = region_of_interest(combined_binary)
+    vertices = np.array([[(150,h), (570, 450), (715, 450), (1150,h)]], dtype=np.int32)
+    combined_binary = region_of_interest(combined_binary, vertices)
     timg = 255 * grad_threshold(combined_binary)
     return r_binary, s_binary, combined_binary, timg
 
